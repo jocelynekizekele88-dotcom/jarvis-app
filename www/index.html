@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#070A12">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<script src="config.js"></script>
+<title>Jarvis</title>
+<style>
+@font-face{font-family:'Baloo 2';src:url(fonts/Baloo2.ttf) format('truetype');font-weight:400 800;font-display:swap}
+@font-face{font-family:'DM Sans';src:url(fonts/DMSans.ttf) format('truetype');font-weight:100 900;font-display:swap}
+html,body{margin:0}
+[hidden]{display:none!important}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box}
+/* Layout : une colonne d'app mobile, centrée sur fond de motif kuba. Chaque thème congolais redéfinit les jetons. */
+:root{
+  --bg:#070A12; --deep:#0D1322; --panel:#141C2F; --line:#24304A; --txt:#EEF1F8; --dim:#8C97B0;
+  --acc:#F4B400; --acc2:#22C3BC; --acc3:#D2452F; --raf:#EADCBF; --onacc:#070A12; --user:#1C2742;
+  --glow:rgba(244,180,0,.22);
+  --display:'Baloo 2','Trebuchet MS',system-ui,sans-serif;
+  --body:'DM Sans','Helvetica Neue',Helvetica,Arial,sans-serif;
+  color-scheme:dark;
+}
+:root[data-jt="kuba"]{--bg:#EFE3C8;--deep:#E6D6B4;--panel:#F8F0DE;--line:#CDB78F;--txt:#23170F;--dim:#6E5A43;--acc:#A8321F;--acc2:#23170F;--acc3:#C98A1A;--raf:#23170F;--onacc:#F8F0DE;--user:#E2D0A8;--glow:rgba(168,50,31,.18);color-scheme:light}
+:root[data-jt="fleuve"]{--bg:#061A1E;--deep:#0A2429;--panel:#10333A;--line:#1E4A52;--txt:#E8F6F4;--dim:#86AFAA;--acc:#F2C14E;--acc2:#3FC1B0;--acc3:#E2734A;--raf:#CFE8E2;--onacc:#061A1E;--user:#12404A;--glow:rgba(242,193,78,.2);color-scheme:dark}
+:root[data-jt="sape"]{--bg:#1A0F1F;--deep:#24152B;--panel:#2E1B37;--line:#4A2F57;--txt:#F8EEF6;--dim:#B79CB8;--acc:#F2A7C3;--acc2:#D9B44A;--acc3:#9B7BFF;--raf:#F8EEF6;--onacc:#1A0F1F;--user:#3A2245;--glow:rgba(242,167,195,.22);color-scheme:dark}
+:root[data-jt="rumba"]{--bg:#220C10;--deep:#2E1217;--panel:#3A1820;--line:#5A2A33;--txt:#FBEFE6;--dim:#C9A39A;--acc:#F0B24A;--acc2:#FF7B5C;--acc3:#B8325A;--raf:#FBEFE6;--onacc:#220C10;--user:#47202A;--glow:rgba(240,178,74,.22);color-scheme:dark}
+:root[data-jt="leopards"]{--bg:#072C6B;--deep:#0A3680;--panel:#0F428F;--line:#2B5EAD;--txt:#FFFFFF;--dim:#AFC8F2;--acc:#F7D618;--acc2:#4DB3FF;--acc3:#E3152A;--raf:#FFFFFF;--onacc:#072C6B;--user:#144C9E;--glow:rgba(247,214,24,.22);color-scheme:dark}
+
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--txt);font-family:var(--body);font-size:15px;transition:background .4s,color .4s}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+button:focus-visible,textarea:focus-visible,label:focus-within{outline:2px solid var(--acc);outline-offset:2px}
+.bgpat{position:fixed;inset:0;width:100%;height:100%;opacity:.07;pointer-events:none;z-index:0}
+.app{position:relative;z-index:1;max-width:480px;height:100%;margin:0 auto;display:flex;flex-direction:column;background:var(--bg)}
+@media (min-width:560px){.app{border-left:1px solid var(--line);border-right:1px solid var(--line);box-shadow:0 0 120px var(--glow)}}
+
+/* barre du haut */
+.top{display:flex;align-items:center;gap:10px;padding:12px 16px 10px;flex:none}
+.ib{width:42px;height:42px;border-radius:14px;background:var(--panel);border:1px solid var(--line);display:grid;place-items:center;flex:none}
+.ib svg{width:20px;height:20px;stroke:var(--txt);fill:none;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
+.brand{flex:1;display:flex;flex-direction:column;align-items:center;line-height:1}
+.brand b{font:800 24px/1 var(--display);letter-spacing:-.3px}
+.status{display:flex;align-items:center;gap:6px;font:600 12px var(--body);color:var(--dim);margin-top:3px}
+.status i{width:7px;height:7px;border-radius:50%;background:var(--acc2)}
+.status.busy i{background:var(--acc);animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.25}}
+.kband{height:10px;flex:none;display:block;width:100%}
+
+/* fil de discussion */
+.thread{flex:1;overflow-y:auto;padding:16px 16px 8px;display:flex;flex-direction:column;gap:16px;scroll-behavior:smooth}
+.welcome{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding-top:4px}
+.orb{width:min(60vw,230px);height:min(60vw,230px);flex:none;overflow:visible}
+.orb g{transform-box:fill-box;transform-origin:center}
+.orb .r1{animation:spin 40s linear infinite}
+.orb .r2{animation:spin 28s linear infinite reverse}
+.orb .r3{animation:spin 18s linear infinite}
+.orb .core{animation:breathe 4s ease-in-out infinite}
+.thinking .orb .r1{animation-duration:6s}.thinking .orb .r2{animation-duration:4s}.thinking .orb .r3{animation-duration:2.5s}.thinking .orb .core{animation-duration:.9s}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes breathe{50%{transform:scale(1.18)}}
+.welcome h1{font:800 34px/1.04 var(--display);letter-spacing:-.6px;margin:4px 0 0;text-wrap:balance}
+.welcome h1 span{color:var(--acc)}
+.welcome p{color:var(--dim);margin:4px 0 8px;line-height:1.5;max-width:34ch}
+.sugg{display:flex;flex-direction:column;gap:9px;width:100%;margin-top:6px}
+.sg{display:flex;gap:12px;align-items:center;text-align:left;background:var(--deep);border:1px solid var(--line);border-radius:18px;padding:12px 14px;width:100%;transition:transform .15s,border-color .15s}
+.sg:hover{border-color:var(--acc);transform:translateY(-1px)}
+.sg .ico{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;flex:none;font:800 17px var(--display)}
+.sg b{display:block;font-weight:700;font-size:14.5px}
+.sg em{display:block;font-style:normal;color:var(--dim);font-size:12.5px;margin-top:2px}
+.demo-note{font-size:12.5px;color:var(--dim);background:var(--deep);border:1px dashed var(--line);border-radius:14px;padding:10px 12px;line-height:1.45}
+
+.u{align-self:flex-end;max-width:88%;background:var(--user);border:1px solid var(--line);border-radius:20px 20px 6px 20px;padding:11px 13px;line-height:1.45;min-width:0}
+.u .conv{background:var(--bg);border-radius:12px;padding:9px 11px;margin-bottom:8px;font-size:13px;color:var(--dim);white-space:pre-wrap;max-height:120px;overflow:hidden;position:relative}
+.u .conv b{display:block;color:var(--txt);font-size:12px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
+.u .shot{display:block;max-width:100%;max-height:180px;border-radius:12px;margin-bottom:8px}
+.u .masked{font-size:12px;color:var(--acc2);margin-top:6px}
+
+.jv{display:flex;gap:10px;align-items:flex-start}
+.jv .mini{width:34px;height:34px;flex:none}
+.jv .col{flex:1;min-width:0}
+.who{font:800 16px var(--display);color:var(--acc)}
+.steps{display:flex;flex-direction:column;gap:5px;margin:6px 0 10px;color:var(--dim);font-size:13.5px}
+.steps div{display:flex;gap:8px;align-items:flex-start;line-height:1.35}
+.steps i{width:17px;height:17px;border-radius:50%;flex:none;display:grid;place-items:center;background:color-mix(in srgb,var(--acc2) 22%,transparent);color:var(--acc2);font:normal 800 10px var(--body);margin-top:1px}
+.steps .live i{background:none;border:2px solid var(--acc);border-top-color:transparent;animation:spin .8s linear infinite}
+.widget{background:var(--deep);border:1px solid var(--line);border-radius:22px;overflow:hidden}
+.tags{display:flex;flex-wrap:wrap;gap:6px;padding:12px}
+.tg{font-size:12px;font-weight:700;padding:6px 9px;border-radius:10px;background:var(--panel);border:1px solid var(--line)}
+.tg b{color:var(--dim);font-weight:600;margin-right:4px}
+.tg.hot{border-color:var(--acc3)}
+.meter{display:inline-block;width:38px;height:6px;border-radius:3px;background:var(--line);vertical-align:middle;margin-left:6px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--acc3)}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.tab{padding:9px 0 8px;text-align:center;font:800 15px/1.1 var(--display);color:var(--dim)}
+.tab small{display:block;font:600 10.5px var(--body);letter-spacing:.3px;margin-top:1px}
+.tab[aria-selected="true"]{background:var(--acc);color:var(--onacc)}
+.rep{padding:14px;line-height:1.55;font-size:15px;white-space:pre-wrap;min-height:70px;outline:none}
+.rep[contenteditable="true"]{background:var(--panel);box-shadow:inset 0 0 0 2px var(--acc)}
+.acts{display:flex;gap:6px;padding:0 12px 12px;flex-wrap:wrap;align-items:center}
+.a{height:36px;border-radius:12px;padding:0 12px;display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:12.5px;background:var(--panel);border:1px solid var(--line);text-decoration:none;color:var(--txt)}
+.a svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.a.main{background:var(--acc2);color:var(--bg);border-color:var(--acc2)}
+.a.on{border-color:var(--acc);color:var(--acc)}
+.tip{font-size:13px;color:var(--dim);margin-top:8px;line-height:1.45}
+.tip b{color:var(--txt)}
+.fol{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.fol button{font-weight:700;font-size:12.5px;padding:8px 12px;border-radius:16px;border:1px solid var(--line);background:var(--bg)}
+.fol button:hover{border-color:var(--acc)}
+.msgtxt{line-height:1.55;white-space:pre-wrap}
+.err{color:var(--acc3);font-size:13.5px;line-height:1.45}
+
+/* saisie */
+.composer{flex:none;margin:6px 12px 12px;padding:8px 8px 8px 8px;background:var(--panel);border:1px solid var(--line);border-radius:24px;display:flex;align-items:flex-end;gap:8px}
+.composer textarea{flex:1;min-width:0;resize:none;border:0;background:transparent;color:var(--txt);font:500 15px/1.4 var(--body);padding:10px 4px;max-height:140px;outline:none}
+.composer textarea::placeholder{color:var(--dim)}
+.cb{width:42px;height:42px;border-radius:15px;display:grid;place-items:center;background:var(--deep);flex:none;border:1px solid var(--line)}
+.cb svg{width:20px;height:20px;stroke:var(--txt);fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.cb.go{background:var(--acc);border-color:var(--acc)}
+.cb.go svg{stroke:var(--onacc)}
+.cb:disabled{opacity:.45;cursor:default}
+.attach-prev{flex:none;margin:0 14px;display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--dim)}
+.attach-prev img{height:44px;border-radius:8px}
+.attach-prev button{color:var(--acc3);font-weight:700}
+.privacy{flex:none;text-align:center;font-size:11.5px;color:var(--dim);margin:-4px 16px 10px}
+
+/* tiroir et feuilles */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{width:100%;max-width:480px;max-height:86%;overflow-y:auto;background:var(--bg);border:1px solid var(--line);border-radius:28px 28px 0 0;padding:18px 16px calc(22px + env(safe-area-inset-bottom,0px))}
+.sheet h2{font:800 26px/1.1 var(--display);margin:4px 0 4px}
+.sheet .sub{color:var(--dim);margin:0 0 14px;line-height:1.45}
+.grab{width:44px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 10px}
+.themes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.th{border-radius:18px;border:2px solid var(--line);padding:0;overflow:hidden;text-align:left;display:flex;flex-direction:column;min-width:0}
+.th[aria-pressed="true"]{border-color:var(--acc)}
+.th .pv{height:84px;width:100%;position:relative;display:flex;align-items:flex-end;padding:10px;gap:5px}
+.th .pv i{width:18px;height:18px;border-radius:6px;display:block}
+.th .pv svg{position:absolute;inset:0;width:100%;height:100%;opacity:.35}
+.th .nm{display:block;width:100%;flex:1;padding:9px 11px 11px;background:var(--deep)}
+.th .nm b{display:block;font:800 16px var(--display)}
+.th .nm em{display:block;font-style:normal;font-size:12px;color:var(--dim);line-height:1.35;margin-top:2px}
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 16px}
+.seg button{padding:9px 13px;border-radius:14px;border:1px solid var(--line);font-weight:700;font-size:13px;background:var(--deep)}
+.seg button[aria-pressed="true"]{background:var(--acc);color:var(--onacc);border-color:var(--acc)}
+.lbl{font-size:12px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;color:var(--dim);margin:14px 0 6px}
+.hist{display:flex;flex-direction:column;gap:6px}
+.hist button{display:flex;flex-direction:column;align-items:flex-start;padding:11px 12px;border-radius:14px;background:var(--deep);border:1px solid var(--line);text-align:left}
+.hist b{font-size:14px}
+.hist em{font-style:normal;color:var(--dim);font-size:12px;margin-top:2px}
+.empty{color:var(--dim);font-size:13.5px}
+
+/* mode voix */
+.voice{position:fixed;inset:0;z-index:30;background:radial-gradient(420px 420px at 50% 38%,color-mix(in srgb,var(--acc) 14%,var(--bg)) 0%,var(--bg) 70%);display:flex;flex-direction:column;align-items:center;padding:calc(18px + env(safe-area-inset-top,0px)) 16px calc(24px + env(safe-area-inset-bottom,0px))}
+.voice .vl{font-weight:800;font-size:12px;letter-spacing:4px;text-transform:uppercase;color:var(--acc2)}
+.likembe{width:min(80vw,320px);height:auto;margin-top:18px;flex:none}
+.likembe line{transition:none}
+.voice .vt{margin-top:auto;width:100%;max-width:440px;font:700 19px/1.45 var(--body);text-wrap:pretty;max-height:34vh;overflow-y:auto}
+.voice .vt span{color:var(--acc)}
+.voice .vn{width:100%;max-width:440px;color:var(--dim);font-size:12.5px;margin:8px 0 14px}
+.vbtns{display:flex;gap:22px}
+.vb{width:62px;height:62px;border-radius:50%;display:grid;place-items:center;background:var(--panel);border:1px solid var(--line)}
+.vb svg{width:24px;height:24px;stroke:var(--txt);fill:none;stroke-width:2.5;stroke-linecap:round}
+.vb.end{background:var(--acc3);border-color:var(--acc3)}
+.vb.end svg{stroke:#fff}
+.toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--txt);color:var(--bg);font-weight:700;font-size:13.5px;padding:10px 16px;border-radius:14px;z-index:40}
+@media (prefers-reduced-motion:reduce){.orb g,.status.busy i,.steps .live i{animation:none!important}}
+</style>
+
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <pattern id="kgrid" width="40" height="40" patternUnits="userSpaceOnUse">
+    <path d="M0 20 L20 0 L40 20 L20 40 Z M10 20 L20 10 L30 20 L20 30 Z" style="stroke:var(--raf)" stroke-width="2" fill="none"/>
+  </pattern>
+  <pattern id="kband" width="30" height="10" patternUnits="userSpaceOnUse">
+    <rect width="30" height="10" style="fill:var(--bg)"/>
+    <path d="M0 5 L5 0 L10 5 L5 10 Z" style="fill:var(--acc3)"/><path d="M10 5 L15 0 L20 5 L15 10 Z" style="fill:var(--acc)"/><path d="M20 5 L25 0 L30 5 L25 10 Z" style="fill:var(--acc2)"/>
+  </pattern>
+  <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <filter id="glow2" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="14"/></filter>
+  <symbol id="miniorb" viewBox="-150 -150 300 300">
+    <circle r="138" style="fill:var(--deep);stroke:var(--line)" stroke-width="6"/>
+    <path d="M0 -112 L112 0 L0 112 L-112 0 Z" style="stroke:var(--acc3)" stroke-width="12" fill="none"/>
+    <path d="M0 -96 L96 0 L0 96 L-96 0 Z" transform="rotate(45)" style="stroke:var(--acc)" stroke-width="12" fill="none"/>
+    <path d="M0 -60 L60 0 L0 60 L-60 0 Z" transform="rotate(22.5)" style="stroke:var(--acc2)" stroke-width="12" fill="none"/>
+    <path d="M0 -30 C4 -6 6 -4 30 0 C6 4 4 6 0 30 C-4 6 -6 4 -30 0 C-6 -4 -4 -6 0 -30 Z" style="fill:var(--acc)"/>
+  </symbol>
+</defs></svg>
+<svg class="bgpat" aria-hidden="true"><rect width="100%" height="100%" fill="url(#kgrid)"/></svg>
+
+<div class="app" id="app">
+  <header class="top">
+    <button class="ib" id="menuBtn" aria-label="Historique et réglages"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
+    <div class="brand"><b>Jarvis</b><span class="status" id="status"><i></i><span id="statusTxt">Prêt</span></span></div>
+    <button class="ib" id="themeBtn" aria-label="Changer de thème"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.7-.9 1.3-1.9-.5-1.2.3-2.6 1.6-2.6H17a4 4 0 0 0 4-4c0-5-4-9.5-9-9.5z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10.5" cy="7" r="1.2"/><circle cx="15" cy="7.5" r="1.2"/></svg></button>
+    <button class="ib" id="newBtn" aria-label="Nouvelle conversation"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+  </header>
+  <svg class="kband" aria-hidden="true"><rect width="100%" height="10" fill="url(#kband)"/></svg>
+
+  <main class="thread" id="thread" aria-live="polite"></main>
+
+  <div class="attach-prev" id="attachPrev" hidden></div>
+  <form class="composer" id="composer">
+    <label class="cb" id="attachLbl" title="Envoyer une capture d'écran" aria-label="Joindre une capture d'écran">
+      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="12" cy="12" r="3.4"/></svg>
+      <input type="file" id="file" accept="image/*" hidden>
+    </label>
+    <textarea id="input" rows="1" placeholder="Colle ta conversation…" aria-label="Message pour Jarvis"></textarea>
+    <button class="cb go" id="sendBtn" type="submit" aria-label="Envoyer"><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
+  </form>
+  <div class="privacy">Les numéros de téléphone sont masqués avant l'envoi. Rien n'est envoyé à tes contacts sans toi.</div>
+</div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const store = {
+  get(k, d){ try { const v = localStorage.getItem('jarvis:'+k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v){ try { localStorage.setItem('jarvis:'+k, JSON.stringify(v)); } catch {} }
+};
+
+/* ---------- Thèmes ---------- */
+const THEMES = [
+  {id:'congotronics', name:'Congotronics', desc:'La nuit de Kin, la tradition branchée.', c:['#070A12','#D2452F','#F4B400','#22C3BC']},
+  {id:'kuba', name:'Raphia Kuba', desc:'Le tissu des rois kuba, en plein jour.', c:['#EFE3C8','#A8321F','#23170F','#C98A1A']},
+  {id:'fleuve', name:'Fleuve', desc:'Le fleuve Congo au crépuscule.', c:['#061A1E','#E2734A','#F2C14E','#3FC1B0']},
+  {id:'sape', name:'La Sape', desc:"L'élégance des sapeurs.", c:['#1A0F1F','#9B7BFF','#F2A7C3','#D9B44A']},
+  {id:'rumba', name:'Rumba', desc:'Les soirées de Kin, patrimoine UNESCO.', c:['#220C10','#B8325A','#F0B24A','#FF7B5C']},
+  {id:'leopards', name:'Léopards', desc:'Bleu ciel, étoile jaune, comme au stade.', c:['#072C6B','#E3152A','#F7D618','#4DB3FF']},
+];
+const LANGS = [['auto','Comme la conversation'],['fr','Français'],['ln','Lingala'],['mix','Français + Lingala'],['sw','Swahili']];
+let theme = store.get('theme', 'congotronics');
+let lang = store.get('lang', 'auto');
+function applyTheme(id){ theme = id; document.documentElement.setAttribute('data-jt', id); store.set('theme', id); }
+applyTheme(theme);
+
+/* ---------- État ---------- */
+const TONES = [['sapeur','Sapeur','Élégant'],['motema','Motema','Avec le cœur'],['mokuse','Mokuse','Court']];
+let threads = store.get('threads', []);
+let cur = null;           // conversation en cours {id,title,date,msgs:[]}
+let ctxData = null;       // dernière analyse, pour les retouches
+let ctxConv = '';         // conversation d'origine
+let busy = false, attached = null, sample = null, sampleReady = false;
+
+/* ---------- Orbe ---------- */
+function orbSVG(){
+  return `<svg class="orb" viewBox="-150 -150 300 300" aria-hidden="true">
+    <circle r="140" style="fill:var(--acc)" opacity=".16" filter="url(#glow2)"/>
+    <circle r="128" style="fill:var(--deep);stroke:var(--line)" stroke-width="1.5"/>
+    <g filter="url(#glow)" fill="none" stroke-linejoin="round">
+      <g class="r1" style="stroke:var(--acc3)" stroke-width="3.2"><path d="M0 -112 L112 0 L0 112 L-112 0 Z"/><path d="M0 -112 L56 -56 M112 0 L56 56 M0 112 L-56 56 M-112 0 L-56 -56"/></g>
+      <g class="r2"><g transform="rotate(45)" style="stroke:var(--acc)" stroke-width="3"><path d="M0 -96 L96 0 L0 96 L-96 0 Z"/><path d="M0 -96 L0 -60 M96 0 L60 0 M0 96 L0 60 M-96 0 L-60 0"/></g></g>
+      <g class="r3"><g transform="rotate(22.5)" style="stroke:var(--acc2)" stroke-width="3"><path d="M0 -70 L70 0 L0 70 L-70 0 Z"/><path d="M-35 -35 L35 35 M35 -35 L-35 35"/></g></g>
+      <g style="stroke:var(--raf)" stroke-width="2.4"><path d="M0 -44 L44 0 L0 44 L-44 0 Z"/></g>
+    </g>
+    <g class="core"><path d="M0 -26 C3 -6 6 -3 26 0 C6 3 3 6 0 26 C-3 6 -6 3 -26 0 C-6 -3 -3 -6 0 -26 Z" style="fill:var(--acc)" filter="url(#glow)"/></g>
+    <g style="fill:var(--raf)"><circle cx="0" cy="-122" r="3"/><circle cx="122" cy="0" r="3"/><circle cx="0" cy="122" r="3"/><circle cx="-122" cy="0" r="3"/></g>
+  </svg>`;
+}
+const mini = '<svg class="mini" aria-hidden="true"><use href="#miniorb"/></svg>';
+
+/* ---------- Exemples ---------- */
+const EXAMPLES = [
+  {ico:'!', col:'--acc3', t:'Calmer un client fâché', d:'Réclamation, retard, remboursement',
+   text:"Client Kabeya : Mbote madame, j'ai payé le pagne lundi\nClient Kabeya : Le colis n'est toujours pas arrivé… 3 jours déjà\nClient Kabeya : Nazali kozela ! Si ça continue je demande mon argent"},
+  {ico:'$', col:'--acc', t:'Relancer un paiement sans vexer', d:'Poli mais ferme',
+   text:"Papa Mukendi : Ok je t'envoie l'argent demain sans faute\n(il y a 2 semaines)\nMoi : Bonjour Papa, tu as pu faire le transfert ?\n(pas de réponse depuis 5 jours)"},
+  {ico:'♥', col:'--acc2', t:'Répondre à la famille en lingala', d:'Mariage, deuil, anniversaire',
+   text:"Tantine Rose : Mwana na ngai, libala ya Grace ezali samedi oyo. Okoya ?\nTantine Rose : Tozali kozela yo !!"}
+];
+
+/* ---------- Rendu ---------- */
+function setStatus(b, txt){ $('#status').classList.toggle('busy', b); $('#statusTxt').textContent = txt; document.body.classList.toggle('thinking', b); }
+function render(){
+  const th = $('#thread');
+  if (!cur || !cur.msgs.length){
+    th.innerHTML = `<section class="welcome">${orbSVG()}
+      <h1>Mbote !<br><span>Qui t'a écrit ?</span></h1>
+      <p>Colle une conversation WhatsApp, SMS ou mail, ou envoie une capture d'écran. Je trouve les bons mots, avec toi.</p>
+      <div class="sugg">${EXAMPLES.map((e,i)=>`<button class="sg" data-ex="${i}"><span class="ico" style="background:color-mix(in srgb,var(${e.col}) 18%,transparent);color:var(${e.col})">${e.ico}</span><span><b>${e.t}</b><em>${e.d}</em></span></button>`).join('')}</div>
+      ${sampleReady && !sample ? '<div class="demo-note">Mode démo : l\'IA n\'est pas encore branchée (voir le fichier LISEZ-MOI). Le premier exemple montre une réponse préparée à l\'avance.</div>' : ''}
+    </section>`;
+    return;
+  }
+  th.innerHTML = cur.msgs.map((m,i)=> m.role==='user' ? userHTML(m) : jarvisHTML(m,i)).join('');
+  th.scrollTop = th.scrollHeight;
+}
+function userHTML(m){
+  const lines = (m.text||'').split('\n').filter(Boolean);
+  const isConv = m.kind === 'conv';
+  return `<div class="u">${m.img ? `<img class="shot" src="${m.img}" alt="Capture d'écran envoyée">` : ''}
+    ${isConv ? `<div class="conv"><b>Conversation importée · ${lines.length} ligne${lines.length>1?'s':''}</b>${esc(lines.slice(0,5).join('\n'))}${lines.length>5?'\n…':''}</div>Aide-moi à répondre.` : esc(m.text)}
+    ${m.masked ? `<div class="masked">${m.masked} numéro${m.masked>1?'s':''} masqué${m.masked>1?'s':''} avant l'envoi</div>` : ''}</div>`;
+}
+function jarvisHTML(m,i){
+  let inner = '';
+  if (m.status === 'thinking'){
+    inner = `<div class="steps">${m.live.map((s,k)=>`<div class="${k===m.live.length-1?'live':''}"><i>${k===m.live.length-1?'':'✓'}</i>${esc(s)}</div>`).join('')}</div>`;
+  } else if (m.status === 'error'){
+    inner = `<p class="err">${esc(m.error)}</p>`;
+  } else {
+    const d = m.data || {};
+    inner += d.etapes?.length ? `<div class="steps">${d.etapes.slice(0,4).map(s=>`<div><i>✓</i>${esc(s)}</div>`).join('')}</div>` : '';
+    if (d.reponses){
+      const t = m.tone || 'motema';
+      const lvl = Math.max(0, Math.min(100, Number(d.emotion_niveau)||0));
+      inner += `<div class="widget">
+        <div class="tags">
+          ${d.intention?`<span class="tg"><b>Intention</b>${esc(d.intention)}</span>`:''}
+          ${d.emotion?`<span class="tg"><b>Émotion</b>${esc(d.emotion)}<span class="meter"><i style="width:${lvl}%"></i></span></span>`:''}
+          ${d.urgence?`<span class="tg ${/haute/i.test(d.urgence)?'hot':''}"><b>Urgence</b>${esc(d.urgence)}</span>`:''}
+          ${d.langues?`<span class="tg"><b>Langue</b>${esc(d.langues)}</span>`:''}
+          ${d.relation?`<span class="tg"><b>Relation</b>${esc(d.relation)}</span>`:''}
+        </div>
+        <div class="tabs" role="tablist">${TONES.map(([id,n,s])=>`<button class="tab" role="tab" aria-selected="${t===id}" data-tone="${id}" data-i="${i}">${n}<small>${s}</small></button>`).join('')}</div>
+        <div class="rep" id="rep-${i}">${esc(d.reponses[t]||'')}</div>
+        <div class="acts">
+          <button class="a main" data-copy="${i}"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 0 1 1-1h10"/></svg>Copier</button>
+          <a class="a" href="https://wa.me/?text=${encodeURIComponent(d.reponses[t]||'')}" target="_blank" rel="noopener">WhatsApp</a>
+          <button class="a" data-edit="${i}"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>Modifier</button>
+          <button class="a" data-redo="${i}"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg>Autre idée</button>
+          <button class="a" data-voice="${i}" aria-label="Écouter la réponse"><svg viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6L8 10zM16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg></button>
+        </div>
+      </div>`;
+      if (d.conseil) inner += `<p class="tip"><b>Conseil :</b> ${esc(d.conseil)}</p>`;
+      if (i === cur.msgs.length-1) inner += `<div class="fol">${['Plus court','Plus poli','Tout en lingala','Tout en français','Ajoute un geste commercial'].map(s=>`<button data-fol="${esc(s)}">${esc(s)}</button>`).join('')}</div>`;
+    } else if (d.message){
+      inner += `<p class="msgtxt">${esc(d.message)}</p>`;
+    }
+  }
+  return `<div class="jv">${mini}<div class="col"><div class="who">Jarvis</div>${inner}</div></div>`;
+}
+
+/* ---------- IA ---------- */
+function maskNumbers(t){ let n = 0; const out = t.replace(/(\+?\d[\d .\-]{7,}\d)/g, () => { n++; return '[numéro]'; }); return [out, n]; }
+function langRule(){
+  return {auto:"Écris chaque réponse dans la même langue (ou le même mélange de langues) que la conversation.",
+    fr:"Écris les réponses en français.", ln:"Écris les réponses en lingala correct et naturel de Kinshasa.",
+    mix:"Écris les réponses en français mélangé naturellement avec du lingala, comme on parle à Kinshasa.",
+    sw:"Écris les réponses en swahili correct et naturel de l'est de la RDC."}[lang];
+}
+function buildPrompt(text, hasImg){
+  const ctx = ctxData ? `\n\nCONTEXTE : voici la conversation déjà analysée :\n"""${ctxConv.slice(0,5000)}"""\nEt ta dernière analyse avec tes 3 réponses (JSON) :\n${JSON.stringify(ctxData).slice(0,4000)}` : '';
+  return `Tu es Jarvis, un assistant congolais (RDC) qui aide les gens à répondre aux messages qu'ils reçoivent (WhatsApp, SMS, Messenger, e-mail). Tu comprends le français, le lingala, le swahili, le kikongo, le tshiluba et leurs mélanges, ainsi que les codes de politesse congolais (Papa, Mama, Ya, Tantine, Leki…).
+
+Règles :
+- Ne jamais inventer un fait précis absent de la conversation (prix, date, heure, nom). Si une réponse a besoin d'un tel détail, mets un repère court entre crochets, par exemple [heure] ou [montant].
+- Les réponses sont écrites à la première personne, comme si l'utilisateur les envoyait lui-même. Ton humain, naturel, jamais robotique.
+- ${langRule()}
+- Les trois tons : "sapeur" = élégant et soigné, "motema" = chaleureux, avec le cœur, "mokuse" = court et direct (une ou deux phrases).
+
+MESSAGE DE L'UTILISATEUR :
+"""${text.slice(0,8000)}"""${hasImg ? "\n(Une capture d'écran de la conversation est jointe : lis-la.)" : ''}${ctx}
+
+Décide :
+- Si c'est une conversation (ou une capture) à laquelle il faut répondre : type "analyse".
+- Si c'est une consigne pour modifier tes réponses précédentes (par ex. « plus court », « tout en lingala ») : type "retouche", et renvoie les 3 réponses modifiées (garde l'analyse).
+- Sinon (question, salutation) : type "message", avec une réponse courte et utile dans "message".
+
+Réponds uniquement avec ce JSON :
+{"type":"analyse|retouche|message","etapes":["3 phrases très courtes à la première personne sur ce que tu as remarqué, ex. J'ai repéré du lingala : « … »"],"intention":"2-3 mots","emotion":"1-2 mots","emotion_niveau":0,"urgence":"Basse|Moyenne|Haute","langues":"ex. Français + Lingala","relation":"2-3 mots","reponses":{"sapeur":"…","motema":"…","mokuse":"…"},"conseil":"une phrase utile ou vide","message":"seulement pour le type message"}`;
+}
+const DEMO = {type:'analyse',etapes:["J'ai lu 3 messages du client Kabeya","J'ai repéré du lingala : « Nazali kozela »","Il a payé lundi et attend depuis 3 jours"],intention:'Réclamation',emotion:'Agacé',emotion_niveau:72,urgence:'Haute',langues:'Français + Lingala',relation:'Client',
+  reponses:{sapeur:"Bonjour Monsieur Kabeya, je vous présente toutes mes excuses pour ce retard. Je contacte le livreur dès maintenant et je vous confirme la date de livraison avant [heure]. Merci pour votre confiance.",
+  motema:"Mbote Papa Kabeya ! Vraiment désolée pour l'attente, je comprends ta colère. Je vérifie tout de suite avec le livreur et je te donne des nouvelles avant [heure]. Merci pour ta patience !",
+  mokuse:"Désolée pour le retard ! Je vérifie avec le livreur et je reviens vers vous avant [heure]."},conseil:"Donne une heure précise à la place de [heure] : un client rassuré attend plus volontiers."};
+
+const LIVE = ['Je lis la conversation…','Je repère les langues et le ton…','Je cherche les bons mots…','Je soigne les trois réponses…'];
+async function ask(text, opts={}){
+  if (busy) return;
+  const [masked, n] = maskNumbers(text);
+  if (!cur){ cur = {id:Date.now(), title:'', date:new Date().toISOString(), msgs:[]}; }
+  const looksConv = !ctxData || masked.split('\n').length > 1 || masked.length > 160 || opts.img;
+  if (!opts.silent) cur.msgs.push({role:'user', text:masked, kind:(looksConv && masked.length>40 && !opts.follow)?'conv':'text', img:opts.imgUrl||null, masked:n});
+  const jm = {role:'jarvis', status:'thinking', live:[LIVE[0]]};
+  cur.msgs.push(jm); busy = true; setStatus(true, 'Réfléchit…'); render();
+  let k = 0; const timer = setInterval(()=>{ if (k < LIVE.length-1){ k++; jm.live = LIVE.slice(0,k+1); render(); } }, 1700);
+  try{
+    let data;
+    if (!sample){
+      if (opts.demo){ await new Promise(r=>setTimeout(r,2600)); data = DEMO; }
+      else throw {code:'unavailable'};
+    } else {
+      const o = {}; if (opts.img) o.images = [opts.img]; if (opts.fresh) o.cache = false;
+      data = await sample.json(buildPrompt(masked, !!opts.img), o);
+    }
+    if (!data || typeof data !== 'object') throw {code:'invalid_json'};
+    if (data.type === 'retouche' && ctxData){ data = {...ctxData, ...data, etapes: data.etapes?.length ? data.etapes : ['J\'ai retouché les trois réponses'], reponses:{...ctxData.reponses, ...(data.reponses||{})}}; }
+    jm.status = 'done'; jm.data = data; jm.tone = opts.tone || 'motema';
+    if (data.reponses){ ctxData = data; if (data.type !== 'retouche') ctxConv = masked; }
+    if (!cur.title) cur.title = (data.relation ? data.relation + ' · ' : '') + (data.intention || masked.slice(0,40));
+  } catch(e){
+    jm.status = 'error'; jm.error = errText(e);
+  } finally {
+    clearInterval(timer); busy = false; setStatus(false, 'Prêt'); save(); render();
+  }
+}
+function errText(e){
+  const c = e && e.code;
+  return ({not_granted:"Jarvis a besoin de ton autorisation pour utiliser l'IA. Recharge la page et accepte la demande.",
+    rate_limited:"Beaucoup de demandes d'un coup. Attends un instant puis réessaie.",
+    session_expired:"Ta session a expiré. Reconnecte-toi puis réessaie.",
+    refused:"Je ne peux pas aider sur ce message. Essaie avec une autre conversation.",
+    invalid_json:"Ma réponse est arrivée incomplète. Appuie sur « Autre idée » ou renvoie le message.",
+    image_rejected:"Cette image n'a pas pu être lue. Essaie une autre capture (JPEG ou PNG).",
+    images_unavailable:"Ici, Jarvis ne peut pas lire les images. Colle plutôt le texte de la conversation.",
+    unavailable:"L'IA n'est pas encore branchée : ajoute l'adresse de ton serveur dans www/config.js. En attendant, essaie le premier exemple en mode démo."}[c]) || "La connexion a coupé. Vérifie ton réseau puis réessaie.";
+}
+function save(){
+  if (!cur || !cur.msgs.length) return;
+  const keep = {...cur, msgs: cur.msgs.filter(m=>m.status!=='thinking').map(m=>({...m, img:null})), ctxData, ctxConv};
+  threads = [keep, ...threads.filter(t=>t.id!==cur.id)].slice(0,20);
+  store.set('threads', threads);
+}
+
+/* ---------- Événements ---------- */
+const input = $('#input');
+input.addEventListener('input', ()=>{ input.style.height='auto'; input.style.height = Math.min(input.scrollHeight,140)+'px'; });
+input.addEventListener('keydown', e=>{ if (e.key==='Enter' && !e.shiftKey && window.matchMedia('(pointer:fine)').matches){ e.preventDefault(); $('#composer').requestSubmit(); }});
+$('#composer').addEventListener('submit', e=>{
+  e.preventDefault(); const t = input.value.trim();
+  if (!t && !attached) return;
+  const img = attached; const url = img ? URL.createObjectURL(img) : null;
+  input.value=''; input.style.height='auto'; clearAttach();
+  ask(t || "Voici une capture d'écran de la conversation. Aide-moi à répondre.", {img, imgUrl:url});
+});
+$('#file').addEventListener('change', e=>{
+  const f = e.target.files[0]; if (!f) return;
+  attached = f; const p = $('#attachPrev');
+  p.innerHTML = `<img src="${URL.createObjectURL(f)}" alt="Aperçu de la capture"> Capture prête à envoyer <button type="button" id="rmAtt">Retirer</button>`;
+  p.hidden = false; $('#rmAtt').onclick = clearAttach; e.target.value='';
+});
+function clearAttach(){ attached = null; $('#attachPrev').hidden = true; $('#attachPrev').innerHTML=''; }
+
+$('#thread').addEventListener('click', async e=>{
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.ex !== undefined){ const ex = EXAMPLES[+b.dataset.ex]; if (!sample && b.dataset.ex==='0') return ask(ex.text,{demo:true}); input.value = ex.text; input.dispatchEvent(new Event('input')); input.focus(); return; }
+  if (b.dataset.tone){ const m = cur.msgs[+b.dataset.i]; m.tone = b.dataset.tone; render(); return; }
+  if (b.dataset.copy){ const el = $('#rep-'+b.dataset.copy); copyText(el.innerText, el); return; }
+  if (b.dataset.edit){ const i=b.dataset.edit, el=$('#rep-'+i), m=cur.msgs[+i];
+    if (el.isContentEditable){ m.data.reponses[m.tone||'motema'] = el.innerText.trim(); el.contentEditable='false'; save(); render(); toast('Réponse enregistrée'); }
+    else { el.contentEditable='true'; el.focus(); b.innerHTML='Enregistrer'; b.classList.add('on'); } return; }
+  if (b.dataset.redo){ const m = cur.msgs[+b.dataset.redo]; return ask('Propose trois autres versions des réponses, avec des formulations différentes.', {follow:true, fresh:true, tone:m.tone}); }
+  if (b.dataset.voice){ const i=+b.dataset.voice, m=cur.msgs[i]; return openVoice(m.data.reponses[m.tone||'motema'], m.tone); }
+  if (b.dataset.fol){ return ask(b.dataset.fol, {follow:true, fresh:true, tone:cur.msgs[cur.msgs.length-1].tone}); }
+});
+async function copyText(t, el){
+  try { await navigator.clipboard.writeText(t); toast('Copié ! Colle-le dans ta conversation.'); }
+  catch { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast('Texte sélectionné : copie-le.'); }
+}
+let tt; function toast(t){ let el = $('.toast'); if (!el){ el = document.createElement('div'); el.className='toast'; el.setAttribute('role','status'); document.body.appendChild(el);} el.textContent=t; el.hidden=false; clearTimeout(tt); tt=setTimeout(()=>el.hidden=true,2200); }
+
+$('#newBtn').onclick = ()=>{ if (busy) return; cur=null; ctxData=null; ctxConv=''; render(); input.focus(); };
+
+/* ---------- Feuilles : thèmes et menu ---------- */
+function sheet(html){ const s = document.createElement('div'); s.className='scrim'; s.innerHTML=`<div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div>${html}</div>`;
+  s.addEventListener('click', e=>{ if (e.target===s) s.remove(); }); document.body.appendChild(s);
+  const esc_ = e=>{ if (e.key==='Escape'){ s.remove(); removeEventListener('keydown',esc_);} }; addEventListener('keydown',esc_); return s; }
+function themeCards(){ return THEMES.map(t=>`<button class="th" data-th="${t.id}" aria-pressed="${t.id===theme}">
+  <span class="pv" style="background:${t.c[0]}"><svg aria-hidden="true"><defs><pattern id="p-${t.id}" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M0 12 L12 0 L24 12 L12 24 Z" stroke="${t.c[2]}" stroke-width="2" fill="none"/></pattern></defs><rect width="100%" height="100%" fill="url(#p-${t.id})"/></svg>${t.c.slice(1).map(c=>`<i style="background:${c}"></i>`).join('')}</span>
+  <span class="nm"><b>${t.name}</b><em>${t.desc}</em></span></button>`).join(''); }
+$('#themeBtn').onclick = ()=>{
+  const s = sheet(`<h2>Thèmes congolais</h2><p class="sub">Choisis l'ambiance de Jarvis.</p><div class="themes">${themeCards()}</div>`);
+  s.addEventListener('click', e=>{ const b=e.target.closest('[data-th]'); if (!b) return; applyTheme(b.dataset.th); s.querySelectorAll('[data-th]').forEach(x=>x.setAttribute('aria-pressed', x.dataset.th===theme)); });
+};
+$('#menuBtn').onclick = ()=>{
+  const s = sheet(`<h2>Jarvis</h2><p class="sub">Tes conversations et tes réglages.</p>
+    <div class="lbl">Langue des réponses</div>
+    <div class="seg">${LANGS.map(([id,n])=>`<button data-lang="${id}" aria-pressed="${id===lang}">${n}</button>`).join('')}</div>
+    <div class="lbl">Historique</div>
+    <div class="hist">${threads.length ? threads.map(t=>`<button data-th-open="${t.id}"><b>${esc(t.title||'Conversation')}</b><em>${new Date(t.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})}</em></button>`).join('') : '<p class="empty">Tes conversations apparaîtront ici.</p>'}</div>
+    <div class="lbl">Thème</div><div class="themes">${themeCards()}</div>`);
+  s.addEventListener('click', e=>{
+    const l = e.target.closest('[data-lang]'); if (l){ lang=l.dataset.lang; store.set('lang',lang); s.querySelectorAll('[data-lang]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.lang===lang)); return; }
+    const o = e.target.closest('[data-th-open]'); if (o){ const t = threads.find(x=>String(x.id)===o.dataset.thOpen); if (t){ cur = JSON.parse(JSON.stringify(t)); ctxData=t.ctxData||null; ctxConv=t.ctxConv||''; render(); } s.remove(); return; }
+    const b = e.target.closest('[data-th]'); if (b){ applyTheme(b.dataset.th); s.querySelectorAll('[data-th]').forEach(x=>x.setAttribute('aria-pressed', x.dataset.th===theme)); }
+  });
+};
+
+/* ---------- Mode voix : le likembé ---------- */
+const TINES = [[80,140,'--raf'],[101,104,'--acc2'],[122,84,'--raf'],[143,56,'--acc'],[165,34,'--acc'],[187,60,'--acc'],[208,92,'--raf'],[229,118,'--acc2'],[250,150,'--raf']];
+let raf = 0;
+function openVoice(text, tone){
+  const v = document.createElement('div'); v.className='voice'; v.setAttribute('role','dialog'); v.setAttribute('aria-modal','true');
+  const toneName = (TONES.find(t=>t[0]===tone)||TONES[1])[1];
+  v.innerHTML = `<div class="vl">Jarvis lit la réponse ${esc(toneName)}</div>
+    <svg class="likembe" viewBox="0 0 330 360" aria-hidden="true">
+      <ellipse cx="165" cy="190" rx="150" ry="150" style="fill:var(--acc)" opacity=".14" filter="url(#glow2)"/>
+      <rect x="45" y="40" width="240" height="300" rx="46" fill="#2A1A0E" stroke="#5A3A20" stroke-width="3"/>
+      <rect x="58" y="54" width="214" height="272" rx="36" fill="none" style="stroke:var(--acc3)" stroke-width="2" stroke-dasharray="6 6" opacity=".7"/>
+      <circle cx="165" cy="270" r="22" fill="#120B05" stroke="#5A3A20" stroke-width="3"/>
+      <rect x="60" y="214" width="210" height="12" rx="6" fill="#8A6A40"/>
+      <g filter="url(#glow)" stroke-linecap="round">${TINES.map(([x,y,c],k)=>`<line data-k="${k}" x1="${x}" y1="220" x2="${x}" y2="${y}" style="stroke:var(${c})" stroke-width="${k===4?11:9}"/>`).join('')}</g>
+    </svg>
+    <div class="vt"><span>Jarvis :</span> ${esc(text)}</div>
+    <div class="vn" id="vnote"></div>
+    <div class="vbtns">
+      <button class="vb" id="vReplay" aria-label="Relire"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg></button>
+      <button class="vb end" id="vClose" aria-label="Fermer"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <button class="vb" id="vCopy" aria-label="Copier"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 0 1 1-1h10"/></svg></button>
+    </div>`;
+  document.body.appendChild(v);
+  const lines = [...v.querySelectorAll('.likembe line')];
+  let energy = 0, speaking = false, t0 = performance.now();
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function frame(now){
+    energy += ((speaking?1:0) - energy) * .08;
+    lines.forEach((l,k)=>{ const base = TINES[k][1]; const wob = reduce ? 0 : Math.sin(now/90 + k*1.7) * 10 * energy + Math.sin(now/37 + k) * 6 * energy; l.setAttribute('y2', base - wob); l.setAttribute('x2', TINES[k][0] + (reduce?0:Math.sin(now/55+k)*2.2*energy)); });
+    raf = requestAnimationFrame(frame);
+  }
+  raf = requestAnimationFrame(frame);
+  function speak(){
+    try{
+      const ss = window.speechSynthesis; if (!ss) throw 0;
+      ss.cancel(); const u = new SpeechSynthesisUtterance(text.replace(/\[[^\]]+\]/g,'')); u.lang='fr-FR'; u.rate=1;
+      const vf = ss.getVoices().find(x=>/^fr/i.test(x.lang)); if (vf) u.voice = vf;
+      u.onstart = ()=>{ speaking = true; }; u.onend = u.onerror = ()=>{ speaking = false; };
+      ss.speak(u); $('#vnote').textContent = 'Voix française de ton appareil. Le lingala peut sonner avec un accent.';
+      setTimeout(()=>{ if (!ss.speaking){ speaking = true; setTimeout(()=>speaking=false, Math.min(9000, text.length*55)); $('#vnote').textContent = "La voix n'est pas disponible sur cet appareil : lis la réponse à l'écran."; } }, 900);
+    } catch { speaking = true; setTimeout(()=>speaking=false, Math.min(9000, text.length*55)); $('#vnote').textContent = "La voix n'est pas disponible sur cet appareil : lis la réponse à l'écran."; }
+  }
+  speak();
+  const close = ()=>{ try{ speechSynthesis.cancel(); }catch{} cancelAnimationFrame(raf); v.remove(); };
+  v.querySelector('#vClose').onclick = close; v.querySelector('#vReplay').onclick = speak;
+  v.querySelector('#vCopy').onclick = ()=>copyText(text, v.querySelector('.vt'));
+  addEventListener('keydown', function k(e){ if (e.key==='Escape'){ close(); removeEventListener('keydown',k);} });
+}
+
+/* ---------- Connecteur IA ----------
+   Jarvis envoie la demande à TON serveur (server/worker.js), qui appelle Gemini avec la clé secrète.
+   Sans adresse dans config.js, Jarvis tourne en mode démo. */
+function fileToB64(f){ return new Promise((ok,ko)=>{ const r=new FileReader(); r.onload=()=>ok(String(r.result).split(',')[1]); r.onerror=ko; r.readAsDataURL(f); }); }
+function makeAI(){
+  const ep = (window.JARVIS_CONFIG && window.JARVIS_CONFIG.endpoint || '').trim();
+  if (!ep) return null;
+  return {
+    async limits(){ return {images:{maxCount:1}}; },
+    async json(prompt, o={}){
+      let image = null;
+      if (o.images && o.images[0]){ const f=o.images[0]; image = {mime:f.type||'image/jpeg', data: await fileToB64(f)}; }
+      let r;
+      try { r = await fetch(ep, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({prompt, image})}); }
+      catch { throw {code:'upstream_error'}; }
+      if (r.status === 429) throw {code:'rate_limited'};
+      if (!r.ok) throw {code:'upstream_error'};
+      const d = await r.json().catch(()=>null);
+      if (!d || !d.result) throw {code:'invalid_json'};
+      return d.result;
+    }
+  };
+}
+
+/* ---------- Démarrage ---------- */
+render();
+(async ()=>{
+  sample = makeAI();
+  sampleReady = true;
+  try { const lim = sample ? await sample.limits() : null; if (!lim || !lim.images) $('#attachLbl').hidden = true; } catch { $('#attachLbl').hidden = true; }
+  if (!cur) render();
+})();
+})();
+</script>
+</body>
+</html>
