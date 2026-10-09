@@ -33,8 +33,9 @@ jobs:
 
       - name: Creer le projet Android avec les icones Jarvis
         run: |
+          rm -rf android
           npx cap add android
-          cp -r android-res/. android/app/src/main/res/
+          if [ -d android-res ]; then cp -r android-res/. android/app/src/main/res/; fi
           npx cap sync android
 
       - name: Compiler l'APK
