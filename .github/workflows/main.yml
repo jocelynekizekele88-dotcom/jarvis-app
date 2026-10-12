@@ -38,6 +38,11 @@ jobs:
           if [ -d android-res ]; then cp -r android-res/. android/app/src/main/res/; fi
           npx cap sync android
 
+      - name: Utiliser toujours la meme cle (mises a jour sans desinstaller)
+        run: |
+          mkdir -p ~/.android
+          cp .github/signing/debug.keystore ~/.android/debug.keystore
+
       - name: Compiler l'APK
         working-directory: android
         run: |
