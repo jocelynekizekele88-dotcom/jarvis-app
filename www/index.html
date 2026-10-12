@@ -167,6 +167,25 @@ button:focus-visible,textarea:focus-visible,label:focus-within{outline:2px solid
 .vb.end svg{stroke:#fff}
 .toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--txt);color:var(--bg);font-weight:700;font-size:13.5px;padding:10px 16px;border-radius:14px;z-index:40}
 @media (prefers-reduced-motion:reduce){.orb g,.status.busy i,.steps .live i{animation:none!important}}
+
+/* ---- Touche congolaise ---- */
+.splash{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:24px;cursor:pointer;transition:opacity .55s,visibility .55s}
+.splash.out{opacity:0;visibility:hidden;pointer-events:none}
+.splash .orb{width:min(58vw,230px);height:min(58vw,230px)}
+.splash b{font:800 56px/1 var(--display);color:var(--acc);letter-spacing:-1px;margin-top:6px}
+.splash .tag{font:700 17px/1.3 var(--body);color:var(--txt)}
+.splash .kband{width:200px;height:10px;display:block;margin-top:4px}
+.splash small{color:var(--dim);font-size:13px;margin-top:22px}
+.rels{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin:8px 0 2px}
+.rels button{padding:8px 13px;border-radius:999px;border:1.5px solid var(--line);background:var(--deep);font-weight:700;font-size:13px;min-height:36px}
+.rels button[aria-pressed="true"]{background:var(--acc);color:var(--onacc);border-color:var(--acc)}
+.made{font-size:12px;color:var(--dim);margin:12px 0 0;letter-spacing:.3px}
+.made b{color:var(--acc)}
+.u{border:2px solid color-mix(in srgb,var(--txt) 55%,transparent);box-shadow:4px 4px 0 var(--acc3)}
+.widget{border:2px solid color-mix(in srgb,var(--txt) 35%,transparent);box-shadow:5px 5px 0 var(--acc)}
+.widget > .kband{display:block;width:100%;height:10px}
+.free-note{font-size:12.5px;color:var(--dim);background:var(--deep);border:1px dashed var(--line);border-radius:14px;padding:10px 12px;line-height:1.45;margin-top:4px}
+@media (prefers-reduced-motion:reduce){.splash{transition:none}}
 </style>
 
 </head>
@@ -191,6 +210,13 @@ button:focus-visible,textarea:focus-visible,label:focus-within{outline:2px solid
 </defs></svg>
 <svg class="bgpat" aria-hidden="true"><rect width="100%" height="100%" fill="url(#kgrid)"/></svg>
 
+<div class="splash" id="splash" role="button" tabindex="0" aria-label="Entrer dans Jarvis">
+  <div id="splashOrb"></div>
+  <b>Mbote !</b>
+  <span class="tag">Jarvis · La bonne réponse à tout</span>
+  <svg class="kband" aria-hidden="true"><rect width="100%" height="10" fill="url(#kband)"/></svg>
+  <small>Touche l'écran pour commencer</small>
+</div>
 <div class="app" id="app">
   <header class="top">
     <button class="ib" id="menuBtn" aria-label="Historique et réglages"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
@@ -244,6 +270,15 @@ let threads = store.get('threads', []);
 let cur = null;           // conversation en cours {id,title,date,msgs:[]}
 let ctxData = null;       // dernière analyse, pour les retouches
 let ctxConv = '';         // conversation d'origine
+const RELS = [
+  ['client','Client',"un client (respect, professionnalisme)"],
+  ['patron','Patron',"son patron ou un supérieur (respect, vouvoiement)"],
+  ['parent','Papa · Mama',"un parent ou un aîné de la famille (grand respect : « Papa », « Mama »)"],
+  ['yaya','Yaya · Leki',"un grand frère / une grande sœur (Yaya) ou un petit frère / une petite sœur (Leki)"],
+  ['ndeko','Ndeko',"un ami ou une amie proche (ton familier, tutoiement)"],
+  ['bolingo','Bolingo',"la personne qu'il ou elle aime (tendresse)"]
+];
+let rel = '';
 let busy = false, attached = null, sample = null, sampleReady = false;
 
 /* ---------- Orbe ---------- */
@@ -280,9 +315,12 @@ function render(){
   if (!cur || !cur.msgs.length){
     th.innerHTML = `<section class="welcome">${orbSVG()}
       <h1>Mbote !<br><span>Qui t'a écrit ?</span></h1>
-      <p>Colle une conversation WhatsApp, SMS ou mail, ou envoie une capture d'écran. Je trouve les bons mots, avec toi.</p>
+      <div class="rels" role="group" aria-label="Qui t'a écrit ?">${RELS.map(([id,n])=>`<button data-rel="${id}" aria-pressed="${rel===id}">${n}</button>`).join('')}</div>
+      <p>Colle une conversation WhatsApp, SMS ou mail. Je trouve les bons mots, avec toi.</p>
       <div class="sugg">${EXAMPLES.map((e,i)=>`<button class="sg" data-ex="${i}"><span class="ico" style="background:color-mix(in srgb,var(${e.col}) 18%,transparent);color:var(${e.col})">${e.ico}</span><span><b>${e.t}</b><em>${e.d}</em></span></button>`).join('')}</div>
-      ${sampleReady && !sample ? '<div class="demo-note">Mode démo : l\'IA n\'est pas encore branchée (voir le fichier LISEZ-MOI). Le premier exemple montre une réponse préparée à l\'avance.</div>' : ''}
+      ${sampleReady && sample && sample.free ? '<div class="free-note">IA gratuite activée. Elle demande une petite pause d\'environ 15 secondes entre deux demandes.</div>' : ''}
+      ${sampleReady && !sample ? '<div class="demo-note">Mode démo : le premier exemple montre une réponse préparée à l\'avance.</div>' : ''}
+      <p class="made">Fait avec <b>motema</b> à Kinshasa · RDC</p>
     </section>`;
     return;
   }
@@ -309,6 +347,7 @@ function jarvisHTML(m,i){
       const t = m.tone || 'motema';
       const lvl = Math.max(0, Math.min(100, Number(d.emotion_niveau)||0));
       inner += `<div class="widget">
+        <svg class="kband" aria-hidden="true"><rect width="100%" height="10" fill="url(#kband)"/></svg>
         <div class="tags">
           ${d.intention?`<span class="tg"><b>Intention</b>${esc(d.intention)}</span>`:''}
           ${d.emotion?`<span class="tg"><b>Émotion</b>${esc(d.emotion)}<span class="meter"><i style="width:${lvl}%"></i></span></span>`:''}
@@ -353,7 +392,7 @@ Règles :
 - ${langRule()}
 - Les trois tons : "sapeur" = élégant et soigné, "motema" = chaleureux, avec le cœur, "mokuse" = court et direct (une ou deux phrases).
 
-MESSAGE DE L'UTILISATEUR :
+${(cur && cur.rel) ? 'La personne qui a écrit ce message est ' + (RELS.find(r=>r[0]===cur.rel)||['','',''])[2] + '. Adapte le respect, le tutoiement ou le vouvoiement et les formules congolaises (Papa, Mama, Yaya, Leki, Ndeko…) en conséquence.\n\n' : ''}MESSAGE DE L'UTILISATEUR :
 """${text.slice(0,8000)}"""${hasImg ? "\n(Une capture d'écran de la conversation est jointe : lis-la.)" : ''}${ctx}
 
 Décide :
@@ -373,11 +412,11 @@ const LIVE = ['Je lis la conversation…','Je repère les langues et le ton…',
 async function ask(text, opts={}){
   if (busy) return;
   const [masked, n] = maskNumbers(text);
-  if (!cur){ cur = {id:Date.now(), title:'', date:new Date().toISOString(), msgs:[]}; }
+  if (!cur){ cur = {id:Date.now(), title:'', date:new Date().toISOString(), msgs:[], rel}; }
   const looksConv = !ctxData || masked.split('\n').length > 1 || masked.length > 160 || opts.img;
   if (!opts.silent) cur.msgs.push({role:'user', text:masked, kind:(looksConv && masked.length>40 && !opts.follow)?'conv':'text', img:opts.imgUrl||null, masked:n});
   const jm = {role:'jarvis', status:'thinking', live:[LIVE[0]]};
-  cur.msgs.push(jm); busy = true; setStatus(true, 'Réfléchit…'); render();
+  cur.msgs.push(jm); busy = true; setStatus(true, 'Nazali kokanisa…'); render();
   let k = 0; const timer = setInterval(()=>{ if (k < LIVE.length-1){ k++; jm.live = LIVE.slice(0,k+1); render(); } }, 1700);
   try{
     let data;
@@ -391,7 +430,7 @@ async function ask(text, opts={}){
     if (!data || typeof data !== 'object') throw {code:'invalid_json'};
     if (data.type === 'retouche' && ctxData){ data = {...ctxData, ...data, etapes: data.etapes?.length ? data.etapes : ['J\'ai retouché les trois réponses'], reponses:{...ctxData.reponses, ...(data.reponses||{})}}; }
     jm.status = 'done'; jm.data = data; jm.tone = opts.tone || 'motema';
-    if (data.reponses){ ctxData = data; if (data.type !== 'retouche') ctxConv = masked; }
+    if (data.reponses){ ctxData = data; if (data.type !== 'retouche') ctxConv = masked; likembe('ready'); }
     if (!cur.title) cur.title = (data.relation ? data.relation + ' · ' : '') + (data.intention || masked.slice(0,40));
   } catch(e){
     jm.status = 'error'; jm.error = errText(e);
@@ -402,7 +441,8 @@ async function ask(text, opts={}){
 function errText(e){
   const c = e && e.code;
   return ({not_granted:"Jarvis a besoin de ton autorisation pour utiliser l'IA. Recharge la page et accepte la demande.",
-    rate_limited:"Beaucoup de demandes d'un coup. Attends un instant puis réessaie.",
+    rate_limited:"Le service IA gratuit demande une petite pause. Réessaie dans 15 secondes.",
+    free_down:"Le service IA gratuit ne répond pas. Vérifie ta connexion internet, puis réessaie dans un instant.",
     session_expired:"Ta session a expiré. Reconnecte-toi puis réessaie.",
     refused:"Je ne peux pas aider sur ce message. Essaie avec une autre conversation.",
     invalid_json:"Ma réponse est arrivée incomplète. Appuie sur « Autre idée » ou renvoie le message.",
@@ -438,7 +478,8 @@ function clearAttach(){ attached = null; $('#attachPrev').hidden = true; $('#att
 
 $('#thread').addEventListener('click', async e=>{
   const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.ex !== undefined){ const ex = EXAMPLES[+b.dataset.ex]; if (!sample && b.dataset.ex==='0') return ask(ex.text,{demo:true}); input.value = ex.text; input.dispatchEvent(new Event('input')); input.focus(); return; }
+  if (b.dataset.rel){ rel = rel===b.dataset.rel ? '' : b.dataset.rel; likembe('tap'); render(); return; }
+  if (b.dataset.ex !== undefined){ const ex = EXAMPLES[+b.dataset.ex]; if (!sample && b.dataset.ex==='0') return ask(ex.text,{demo:true}); if (sample) return ask(ex.text); input.value = ex.text; input.dispatchEvent(new Event('input')); input.focus(); return; }
   if (b.dataset.tone){ const m = cur.msgs[+b.dataset.i]; m.tone = b.dataset.tone; render(); return; }
   if (b.dataset.copy){ const el = $('#rep-'+b.dataset.copy); copyText(el.innerText, el); return; }
   if (b.dataset.edit){ const i=b.dataset.edit, el=$('#rep-'+i), m=cur.msgs[+i];
@@ -449,12 +490,12 @@ $('#thread').addEventListener('click', async e=>{
   if (b.dataset.fol){ return ask(b.dataset.fol, {follow:true, fresh:true, tone:cur.msgs[cur.msgs.length-1].tone}); }
 });
 async function copyText(t, el){
-  try { await navigator.clipboard.writeText(t); toast('Copié ! Colle-le dans ta conversation.'); }
+  try { await navigator.clipboard.writeText(t); toast('Malamu ! Copié, colle-le dans ta conversation.'); likembe('copy'); }
   catch { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast('Texte sélectionné : copie-le.'); }
 }
 let tt; function toast(t){ let el = $('.toast'); if (!el){ el = document.createElement('div'); el.className='toast'; el.setAttribute('role','status'); document.body.appendChild(el);} el.textContent=t; el.hidden=false; clearTimeout(tt); tt=setTimeout(()=>el.hidden=true,2200); }
 
-$('#newBtn').onclick = ()=>{ if (busy) return; cur=null; ctxData=null; ctxConv=''; render(); input.focus(); };
+$('#newBtn').onclick = ()=>{ if (busy) return; rel=''; cur=null; ctxData=null; ctxConv=''; render(); input.focus(); };
 
 /* ---------- Feuilles : thèmes et menu ---------- */
 function sheet(html){ const s = document.createElement('div'); s.className='scrim'; s.innerHTML=`<div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div>${html}</div>`;
@@ -465,7 +506,7 @@ function themeCards(){ return THEMES.map(t=>`<button class="th" data-th="${t.id}
   <span class="nm"><b>${t.name}</b><em>${t.desc}</em></span></button>`).join(''); }
 $('#themeBtn').onclick = ()=>{
   const s = sheet(`<h2>Thèmes congolais</h2><p class="sub">Choisis l'ambiance de Jarvis.</p><div class="themes">${themeCards()}</div>`);
-  s.addEventListener('click', e=>{ const b=e.target.closest('[data-th]'); if (!b) return; applyTheme(b.dataset.th); s.querySelectorAll('[data-th]').forEach(x=>x.setAttribute('aria-pressed', x.dataset.th===theme)); });
+  s.addEventListener('click', e=>{ const b=e.target.closest('[data-th]'); if (!b) return; applyTheme(b.dataset.th); likembe('theme'); s.querySelectorAll('[data-th]').forEach(x=>x.setAttribute('aria-pressed', x.dataset.th===theme)); });
 };
 $('#menuBtn').onclick = ()=>{
   const s = sheet(`<h2>Jarvis</h2><p class="sub">Tes conversations et tes réglages.</p>
@@ -473,11 +514,14 @@ $('#menuBtn').onclick = ()=>{
     <div class="seg">${LANGS.map(([id,n])=>`<button data-lang="${id}" aria-pressed="${id===lang}">${n}</button>`).join('')}</div>
     <div class="lbl">Historique</div>
     <div class="hist">${threads.length ? threads.map(t=>`<button data-th-open="${t.id}"><b>${esc(t.title||'Conversation')}</b><em>${new Date(t.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})}</em></button>`).join('') : '<p class="empty">Tes conversations apparaîtront ici.</p>'}</div>
+    <div class="lbl">Sons du likembé</div>
+    <div class="seg"><button data-snd="1" aria-pressed="${sounds}">Activés</button><button data-snd="0" aria-pressed="${!sounds}">Coupés</button></div>
     <div class="lbl">Thème</div><div class="themes">${themeCards()}</div>`);
   s.addEventListener('click', e=>{
+    const sd = e.target.closest('[data-snd]'); if (sd){ sounds = sd.dataset.snd==='1'; store.set('sounds',sounds); s.querySelectorAll('[data-snd]').forEach(x=>x.setAttribute('aria-pressed', x.dataset.snd===(sounds?'1':'0'))); likembe('tap'); return; }
     const l = e.target.closest('[data-lang]'); if (l){ lang=l.dataset.lang; store.set('lang',lang); s.querySelectorAll('[data-lang]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.lang===lang)); return; }
     const o = e.target.closest('[data-th-open]'); if (o){ const t = threads.find(x=>String(x.id)===o.dataset.thOpen); if (t){ cur = JSON.parse(JSON.stringify(t)); ctxData=t.ctxData||null; ctxConv=t.ctxConv||''; render(); } s.remove(); return; }
-    const b = e.target.closest('[data-th]'); if (b){ applyTheme(b.dataset.th); s.querySelectorAll('[data-th]').forEach(x=>x.setAttribute('aria-pressed', x.dataset.th===theme)); }
+    const b = e.target.closest('[data-th]'); if (b){ applyTheme(b.dataset.th); likembe('theme'); s.querySelectorAll('[data-th]').forEach(x=>x.setAttribute('aria-pressed', x.dataset.th===theme)); }
   });
 };
 
@@ -530,13 +574,34 @@ function openVoice(text, tone){
   addEventListener('keydown', function k(e){ if (e.key==='Escape'){ close(); removeEventListener('keydown',k);} });
 }
 
+/* ---------- Sons du likembé ----------
+   Petites notes pincées, comme les lames de métal d'un likembé. Réglables dans le menu. */
+let sounds = store.get('sounds', true), actx = null;
+function audio(){ try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch { actx = null; } return actx; }
+addEventListener('pointerdown', audio, {passive:true});
+function pluck(f, t, vol){
+  const a = actx, g = a.createGain(), o = a.createOscillator(), o2 = a.createOscillator(), g2 = a.createGain();
+  o.type = 'triangle'; o.frequency.value = f; o2.type = 'sine'; o2.frequency.value = f * 2.76; g2.gain.value = .22;
+  o.connect(g); o2.connect(g2); g2.connect(g); g.connect(a.destination);
+  g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .008); g.gain.exponentialRampToValueAtTime(.0001, t + 1.3);
+  o.start(t); o2.start(t); o.stop(t + 1.35); o2.stop(t + 1.35);
+}
+function likembe(kind){
+  if (!sounds) return;
+  try {
+    const a = audio(); if (!a) return; const now = a.currentTime + .02;
+    const N = {ready:[523.25,659.25,783.99,1046.5], copy:[880,1174.66], theme:[392,523.25,659.25], start:[392,440,523.25,659.25,783.99], tap:[659.25]}[kind] || [660];
+    N.forEach((f,k)=>pluck(f, now + k*.1, kind==='tap' ? .08 : .14));
+  } catch {}
+}
+
 /* ---------- Connecteur IA ----------
    Jarvis envoie la demande à TON serveur (server/worker.js), qui appelle Gemini avec la clé secrète.
    Sans adresse dans config.js, Jarvis tourne en mode démo. */
 function fileToB64(f){ return new Promise((ok,ko)=>{ const r=new FileReader(); r.onload=()=>ok(String(r.result).split(',')[1]); r.onerror=ko; r.readAsDataURL(f); }); }
 function makeAI(){
   const ep = (window.JARVIS_CONFIG && window.JARVIS_CONFIG.endpoint || '').trim();
-  if (!ep) return null;
+  if (!ep) return freeAI();
   return {
     async limits(){ return {images:{maxCount:1}}; },
     async json(prompt, o={}){
@@ -554,8 +619,53 @@ function makeAI(){
   };
 }
 
+/* IA gratuite sans clé (service Pollinations). Elle peut être lente ou changer sans prévenir :
+   pour un vrai lancement, branche ton propre serveur dans config.js. */
+function parseLooseJSON(t){
+  t = String(t||'').trim();
+  try { return JSON.parse(t); } catch {}
+  const f = t.match(/```(?:json)?\s*([\s\S]*?)```/); if (f){ try { return JSON.parse(f[1]); } catch {} }
+  const a = t.indexOf('{'), b = t.lastIndexOf('}'); if (a >= 0 && b > a){ try { return JSON.parse(t.slice(a, b+1)); } catch {} }
+  return null;
+}
+function freeAI(){
+  let last = 0;
+  return {
+    free: true,
+    async limits(){ return {}; },
+    async json(prompt){
+      const wait = 15500 - (Date.now() - last);
+      if (wait > 0) await new Promise(r=>setTimeout(r, wait));
+      last = Date.now();
+      const ctl = new AbortController(); const to = setTimeout(()=>ctl.abort(), 90000);
+      let r;
+      try {
+        r = await fetch('https://text.pollinations.ai/openai', {method:'POST', signal:ctl.signal, headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({model:'openai', private:true, referrer:'jarvis-app',
+            messages:[{role:'system', content:"Tu réponds uniquement avec un objet JSON valide, sans aucun texte autour."},{role:'user', content:prompt}]})});
+      } catch { throw {code:'free_down'}; } finally { clearTimeout(to); last = Date.now(); }
+      if (r.status === 429) throw {code:'rate_limited'};
+      if (!r.ok) throw {code:'free_down'};
+      const raw = await r.text();
+      let content = raw; const env = parseLooseJSON(raw);
+      if (env && env.choices) content = env.choices[0]?.message?.content || '';
+      else if (env && (env.reponses || env.type)) return env;
+      const out = parseLooseJSON(content);
+      if (!out) throw {code:'invalid_json'};
+      return out;
+    }
+  };
+}
+
 /* ---------- Démarrage ---------- */
 render();
+(function splash(){
+  const sp = $('#splash'); if (!sp) return;
+  $('#splashOrb').innerHTML = orbSVG();
+  const go = ()=>{ if (sp.classList.contains('out')) return; sp.classList.add('out'); likembe('start'); setTimeout(()=>sp.remove(), 700); };
+  sp.addEventListener('click', go); sp.addEventListener('keydown', e=>{ if (e.key==='Enter' || e.key===' ') go(); });
+  setTimeout(()=>{ if (!sp.classList.contains('out')){ sp.classList.add('out'); setTimeout(()=>sp.remove(), 700); } }, 2600);
+})();
 (async ()=>{
   sample = makeAI();
   sampleReady = true;
